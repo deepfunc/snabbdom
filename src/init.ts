@@ -250,6 +250,8 @@ export function init(
     startIdx: number,
     endIdx: number
   ): void {
+    // 这个里面 createRmCb 产生的 removeCallback 有点意思。
+    // 看逻辑是 remove 所有的钩子都调用 cb 后才 remove node。
     for (; startIdx <= endIdx; ++startIdx) {
       let listeners: number;
       let rm: () => void;
@@ -399,7 +401,7 @@ export function init(
       vnode.data?.hook?.update?.(oldVnode, vnode);
     }
 
-    if (isUndef(vnode.text)) {
+    if (isUndef(vnode.text)) { // 处理普通节点。
       if (isDef(oldCh) && isDef(ch)) {
         if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue);
       } else if (isDef(ch)) {
@@ -410,13 +412,15 @@ export function init(
       } else if (isDef(oldVnode.text)) {
         api.setTextContent(elm, "");
       }
-    } else if (oldVnode.text !== vnode.text) {
+    } else if (oldVnode.text !== vnode.text) { // 处理文本节点。
       if (isDef(oldCh)) {
+        // 移除 old children。
         removeVnodes(elm, oldCh, 0, oldCh.length - 1);
       }
       api.setTextContent(elm, vnode.text!);
     }
 
+    // 执行 postpatch 钩子。
     hook?.postpatch?.(oldVnode, vnode);
   }
 
