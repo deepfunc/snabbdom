@@ -17,9 +17,9 @@ type VNodeQueue = VNode[];
 const emptyNode = vnode("", {}, [], undefined, undefined);
 
 function sameVnode(vnode1: VNode, vnode2: VNode): boolean {
-  const isSameKey = vnode1.key === vnode2.key;
-  const isSameIs = vnode1.data?.is === vnode2.data?.is;
-  const isSameSel = vnode1.sel === vnode2.sel;
+  const isSameKey = vnode1.key === vnode2.key; // 同样的 key。
+  const isSameIs = vnode1.data?.is === vnode2.data?.is; // 这是什么场景用法？
+  const isSameSel = vnode1.sel === vnode2.sel; // 同样的选择器。
 
   return isSameSel && isSameKey && isSameIs;
 }
@@ -377,12 +377,17 @@ export function init(
     vnode: VNode,
     insertedVnodeQueue: VNodeQueue
   ) {
+    // 执行 prepatch 钩子。
     const hook = vnode.data?.hook;
     hook?.prepatch?.(oldVnode, vnode);
+
     const elm = (vnode.elm = oldVnode.elm)!;
     const oldCh = oldVnode.children as VNode[];
     const ch = vnode.children as VNode[];
+
+    // 如果是同一个 vnode 对象，直接退出不处理。
     if (oldVnode === vnode) return;
+
     if (
       vnode.data !== undefined ||
       (isDef(vnode.text) && vnode.text !== oldVnode.text)
@@ -393,6 +398,7 @@ export function init(
         cbs.update[i](oldVnode, vnode);
       vnode.data?.hook?.update?.(oldVnode, vnode);
     }
+
     if (isUndef(vnode.text)) {
       if (isDef(oldCh) && isDef(ch)) {
         if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue);
@@ -410,6 +416,7 @@ export function init(
       }
       api.setTextContent(elm, vnode.text!);
     }
+
     hook?.postpatch?.(oldVnode, vnode);
   }
 
@@ -419,14 +426,18 @@ export function init(
   ): VNode {
     let i: number, elm: Node, parent: Node;
     const insertedVnodeQueue: VNodeQueue = [];
+
+    // patch 开始了，执行 pre 钩子。
     for (i = 0; i < cbs.pre.length; ++i) cbs.pre[i]();
 
+    // 如果 oldVnode 是 Element，则将其转换为空的 vnode 对象，属性里面记录了 elm。
     if (isElement(api, oldVnode)) {
       oldVnode = emptyNodeAt(oldVnode);
     } else if (isDocumentFragment(api, oldVnode)) {
       oldVnode = emptyDocumentFragmentAt(oldVnode);
     }
 
+    // 如果是同样的 vnode，则直接更新。
     if (sameVnode(oldVnode, vnode)) {
       patchVnode(oldVnode, vnode, insertedVnodeQueue);
     } else {
