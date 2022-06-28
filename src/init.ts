@@ -17,9 +17,14 @@ type VNodeQueue = VNode[];
 const emptyNode = vnode("", {}, [], undefined, undefined);
 
 function sameVnode(vnode1: VNode, vnode2: VNode): boolean {
-  const isSameKey = vnode1.key === vnode2.key; // 同样的 key。
-  const isSameIs = vnode1.data?.is === vnode2.data?.is; // 这是什么场景用法？
-  const isSameSel = vnode1.sel === vnode2.sel; // 同样的选择器。
+  // 同样的 key。
+  const isSameKey = vnode1.key === vnode2.key;
+  // 这是什么场景用法？
+  // Web component，自定义元素标签名，看这里：
+  // https://developer.mozilla.org/zh-CN/docs/Web/API/Document/createElement
+  const isSameIs = vnode1.data?.is === vnode2.data?.is;
+  // 同样的选择器。
+  const isSameSel = vnode1.sel === vnode2.sel;
 
   return isSameSel && isSameKey && isSameIs;
 }
@@ -152,6 +157,7 @@ export function init(
     const children = vnode.children;
     const sel = vnode.sel;
     if (sel === "!") {
+      // 删除原节点的时候用，其实就是创建了个注释节点。
       if (isUndef(vnode.text)) {
         vnode.text = "";
       }
@@ -170,11 +176,15 @@ export function init(
         isDef(data) && isDef((i = data.ns))
           ? api.createElementNS(i, tag, data)
           : api.createElement(tag, data));
+      // 设置 id。
       if (hash < dot) elm.setAttribute("id", sel.slice(hash + 1, dot));
+      // 设置 class。
       if (dotIdx > 0)
         elm.setAttribute("class", sel.slice(dot + 1).replace(/\./g, " "));
+      // 调用 create 钩子。
       for (i = 0; i < cbs.create.length; ++i) cbs.create[i](emptyNode, vnode);
       if (is.array(children)) {
+        // 插入子节点数组。
         for (i = 0; i < children.length; ++i) {
           const ch = children[i];
           if (ch != null) {
@@ -182,8 +192,11 @@ export function init(
           }
         }
       } else if (is.primitive(vnode.text)) {
+        // 如果子节点是文本，直接创建文本插入。
         api.appendChild(elm, api.createTextNode(vnode.text));
       }
+
+      // 判断是否需要调用 insert 钩子。
       const hook = vnode.data!.hook;
       if (isDef(hook)) {
         hook.create?.(emptyNode, vnode);
@@ -387,7 +400,7 @@ export function init(
     const oldCh = oldVnode.children as VNode[];
     const ch = vnode.children as VNode[];
 
-    // 如果是同一个 vnode 对象，直接退出不处理。
+    // 如果引用是同一个 vnode 对象，直接退出不处理。
     if (oldVnode === vnode) return;
 
     if (
@@ -401,7 +414,8 @@ export function init(
       vnode.data?.hook?.update?.(oldVnode, vnode);
     }
 
-    if (isUndef(vnode.text)) { // 处理普通节点。
+    if (isUndef(vnode.text)) {
+      // 说明孩子是数组不是文本。
       if (isDef(oldCh) && isDef(ch)) {
         if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue);
       } else if (isDef(ch)) {
@@ -412,9 +426,10 @@ export function init(
       } else if (isDef(oldVnode.text)) {
         api.setTextContent(elm, "");
       }
-    } else if (oldVnode.text !== vnode.text) { // 处理文本节点。
+    } else if (oldVnode.text !== vnode.text) {
+      // 如果新孩子是文本并且不同的话。
       if (isDef(oldCh)) {
-        // 移除 old children。
+        // 如果有旧孩子数组则先移除。
         removeVnodes(elm, oldCh, 0, oldCh.length - 1);
       }
       api.setTextContent(elm, vnode.text!);
@@ -441,10 +456,12 @@ export function init(
       oldVnode = emptyDocumentFragmentAt(oldVnode);
     }
 
-    // 如果是同样的 vnode，则直接更新。
     if (sameVnode(oldVnode, vnode)) {
+      // 如果是同样的 vnode，则直接更新。
       patchVnode(oldVnode, vnode, insertedVnodeQueue);
     } else {
+      // 不同的 vode，则创建新的 element 插入，并删除旧的。
+      // 这里没有 diff？
       elm = oldVnode.elm!;
       parent = api.parentNode(elm) as Node;
 
@@ -456,6 +473,7 @@ export function init(
       }
     }
 
+    // 调用 insert 和 post 钩子。
     for (i = 0; i < insertedVnodeQueue.length; ++i) {
       insertedVnodeQueue[i].data!.hook!.insert!(insertedVnodeQueue[i]);
     }
